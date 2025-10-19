@@ -1,0 +1,152 @@
+// *****************************************************************************
+// Application: savings goal tracking system
+// - set new savings goals based on specific users 
+//  - set dates to achieve said goals
+//  - update the savings progress towards the goals
+//  - send user notification 
+//    - if (a goal date is approaching) and (the savings goal has not been met)
+// 
+// Variables: nouns
+//     Savings Goal:
+//     - User ID
+//     - Target Amount
+//     - Target Date
+//     - Amount Saved
+// 
+//   |  id | user_id |  target_amount | target_date | amount_saved |
+//   |-----|---------|----------------|-------------|--------------|
+//   | 001 | user1   | 1000.00        | 11/01/2025  | 150.00       |
+//   | 002 | user2   | 5000.00        | 12/31/2025  | 2150.00      |
+// 
+// ***************************************************************************    
+
+// Define savings database
+DB_savings = SomeSavingsDatabase()
+// Define user database
+DB_user = SomeUserDatabase()
+// Define email system
+EmailSystem = SomeEmailSystem()
+
+// Storing savings goal
+FUNCTION store(savings_goal)
+    // Savings the Savings goal into the Savings databasee
+    RETURN DB_savings.save(savings_goal)
+END FUNCTION
+
+// Creating a new Savings Goal
+FUNCTION create_savings_goal(user_id, target_amt, trg_dt, amt_saved)
+    // Creating a savings_goal object
+    savings_goal = {
+        user_id: user_id,
+        target_amount: target_amt,
+        target_date: trg_dt,
+        amount_saved: amt_saved
+    }
+    // Calling store function
+    savings_goal = store(savings_goal)
+
+    RETURN savings_goal
+END FUNCTION
+
+// Update the Savings Goal
+FUNCTION update(savings_goal):
+    // Updating savings database
+    RETURN DB_savings.save(savings_goal)
+END FUNCTION
+
+
+ // Depositing an amount into the savings amount
+FUNCTION deposit(savings_goal, amount):
+    current_savings_amt = savings_goal.amount_saved
+    new_savings_amt = current_savings_amt + amount
+
+    //updating savings goal
+    savings_goal.amount_saved = new_savings_amt
+    update(savings_goal)
+
+    RETURN new_savings_amt
+END FUNCTION
+
+// Showing savings from savings database
+FUNCTION retrieve_savings(user_id):
+    savings_goal = DB_savings.fetch_by_user(user_id)
+    RETURN savings_goal
+END FUNCTION
+
+// Creating a message to send if savings goal not met
+FUNCTION compose_notif(savings_goal):
+    message = "You Have Not Met Your Savings Goal of " + savings_goal.target_amount + 
+     " By " + savings_goal.target_date 
+
+     RETURN message
+END FUNCTION
+
+// Send the notification to the user
+FUNCTION send_notif(user_id, message):
+    
+    // Fetch User's email using User ID
+    user = DB_user.fetch_by_user(user_id)
+    email = user.email
+
+    RETURN EmailSystem.send(email,message)
+END FUNCTION
+
+// Send Notification to User if Goal not Met by Date
+FUNCTION send_progress_notif(savings_goals)
+
+    notification_count = 0
+
+    // Loop Through Savings Goals
+    FOR EACH goal IN savings_goals
+    
+        // Get status of savings_goal
+        status = get_status(goal)
+
+        // Check get_status is "Completed"
+        IF status == "Completed" AND 
+            // Check if Target Date 
+            ((today() - goal.target_date) < 3)
+        THEN
+            // Send a notification and increase notification_count by 1
+            notification = compose_notif(goal)
+            send_notif(goal.user_id, notification)
+
+            notification_count = notification_count + 1
+
+    RETURN notification_count
+END FUNCTION
+
+// fetching all goals from database
+FUNCTION get_all_goals()
+    RETURN DB_savings.fetch_all()
+END FUNCTION
+
+// Getting Savings Goal Progress
+FUNCTION get_progress(savings_goal)
+    // Determine progress based on amount saved / target amount
+    savings_progress = savings_goal.amt_saved / savings_goal.target_amt
+
+    RETURN savings_progress
+END FUNCTION
+
+// Getting Savings Goal Status
+FUNCTION get_status(savings_goal)
+    // Determining Current Status Checking If Not Started, Completed, or In Progress
+
+    // Default Status to "Not Started"
+    status = "Not Started"
+    IF savings_goal.amt_saved > 0 
+        // Set Status to "In Progress"
+        status = "In Progress"
+
+    // Set Status to "Completed"
+    IF savings_goal.amt_saved >= savings_goal.target_amount
+        status = "Completed"
+
+    RETURN status
+END FUNCTION
+
+
+
+
+
